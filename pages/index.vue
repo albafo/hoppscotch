@@ -1,5 +1,90 @@
 <template>
   <div class="page">
+    <div class="text-center">
+      <span class="cursor-pointer" @click="showModalProjects = true">
+        <span v-if="!fb.currentProject">Workspaces</span
+        ><span v-else>{{ fb.currentProject.name }}</span>
+        <i class="ml-2 align-middle material-icons">expand_more</i>
+      </span>
+    </div>
+
+    <modal v-if="showModalProjects" @close="showModalProjects = false">
+      <div slot="header">
+        <ul>
+          <li>
+            <div class="row-wrapper">
+              <h3 class="title"><span>Workspaces</span></h3>
+              <div>
+                <button class="icon" @click="showModalProjects = false">
+                  <closeIcon class="material-icons" />
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+      <div slot="body">
+        <div class="show-on-large-screen">
+          <input aria-label="Search" type="search" :placeholder="$t('search')" />
+          <!-- <button class="icon">
+            <i class="material-icons">search</i>
+          </button> -->
+        </div>
+        <div class="virtual-list">
+          <ul class="flex-col">
+            <li v-for="(collection, index) in filteredProjects">
+              <div class="row-wrapper">
+                <div v-if="editProject !== collection.id">
+                  <button class="icon" @click="setCurrentProject(collection)">
+                    <span>
+                      <i class="mr-2 align-middle material-icons">meeting_room</i>
+                      {{ collection.name }}
+                    </span>
+                  </button>
+                </div>
+                <div v-else>
+                  <input type="text" spellcheck="false" v-model="collection.name" />
+                  <i @click="editedProject(collection)" class="ml-2 align-middle material-icons"
+                    >done</i
+                  >
+                </div>
+
+                <v-popover>
+                  <button class="tooltip-target icon">
+                    <i class="material-icons">more_vert</i>
+                  </button>
+                  <template slot="popover">
+                    <div>
+                      <button class="icon" @click="editProject = collection.id" v-close-popover>
+                        <i class="material-icons">create</i>
+                        <span>{{ $t("edit") }}</span>
+                      </button>
+                    </div>
+                    <div>
+                      <button class="icon" @click="deleteProject(collection)" v-close-popover>
+                        <deleteIcon class="material-icons" />
+                        <span>{{ $t("delete") }}</span>
+                      </button>
+                    </div>
+                  </template>
+                </v-popover>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div slot="footer">
+        <div class="row-wrapper">
+          <span></span>
+          <span>
+            <button class="icon" @click="showModalProjects = false">
+              {{ $t("cancel") }}
+            </button>
+          </span>
+        </div>
+      </div>
+    </modal>
+
     <div class="content">
       <div class="page-columns inner-left">
         <pw-section class="blue" :label="$t('request')" ref="request">
@@ -1323,7 +1408,9 @@ export default {
   },
   data() {
     return {
+      editProject: null,
       showModal: false,
+      showModalProjects: false,
       showPreRequestScript: true,
       testsEnabled: true,
       testScript: "// pw.expect('variable').toBe('value');",
@@ -1479,6 +1566,17 @@ export default {
     },
   },
   computed: {
+    filteredProjects() {
+      const projects =
+        fb.currentUser !== null ? fb.currentProjects : this.$store.state.postwoman.projects
+      let resultProjects = []
+      projects.forEach(function (item) {
+        item.edit = false
+        resultProjects.push(item)
+      })
+      return resultProjects
+    },
+
     /**
      * Check content types that can be automatically
      * serialized by postwoman.
@@ -1845,6 +1943,23 @@ export default {
     },
   },
   methods: {
+    editedProject(project) {
+      fb.editProject(project)
+      this.editProject = null
+    },
+    deleteProject(project) {
+      if (!confirm("¿Seguro que quieres borrar este proyecto?")) return
+      fb.deleteProject(project)
+      this.$toast.error(this.$t("deleted"), {
+        icon: "delete",
+      })
+    },
+    setCurrentProject(project) {
+      fb.setCurrentProject(project)
+      this.$store.commit("postwoman/replaceCollections", fb.currentCollections)
+      this.showModalProjects = false
+    },
+
     useSelectedEnvironment(args) {
       let environment = args.environment
       let environments = args.environments

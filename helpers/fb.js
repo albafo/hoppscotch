@@ -32,6 +32,8 @@ export class FirebaseInstance {
     this.currentHistory = []
     this.currentCollections = []
     this.currentEnvironments = []
+    this.currentProjects = []
+    this.currentProject = null
 
     this.app.auth().onAuthStateChanged((user) => {
       if (user) {
@@ -120,10 +122,54 @@ export class FirebaseInstance {
               this.currentEnvironments = environments[0].environment
             }
           })
+
+        this.usersCollection
+          .doc(this.currentUser.uid)
+          .collection("projects")
+          .onSnapshot((projectsRef) => {
+            const projects = []
+            projectsRef.forEach((doc) => {
+              const project = doc.data()
+              project.id = doc.id
+              projects.push(project)
+            })
+            if (projects.length > 0) {
+              this.currentProjects = projects
+            }
+          })
       } else {
         this.currentUser = null
       }
     })
+  }
+
+  async editProject(project) {
+    await this.usersCollection
+      .doc(this.currentUser.uid)
+      .collection("projects")
+      .doc(project.id)
+      .update({
+        name: project.name,
+      })
+  }
+  async deleteProject(project) {
+    try {
+      await this.usersCollection
+        .doc(this.currentUser.uid)
+        .collection("projects")
+        .doc(project.id)
+        .delete()
+    } catch (e) {
+      console.error("error deleting", project, e)
+      throw e
+    }
+  }
+
+  setCurrentProject(currentProject) {
+    this.currentProject = currentProject
+    this.currentProject.collections
+      ? (this.currentCollections = this.currentProject.collections.sync.collection)
+      : (this.currentCollections = [])
   }
 
   async signInUserWithGoogle() {
@@ -255,11 +301,23 @@ export class FirebaseInstance {
     }
 
     try {
-      await this.usersCollection
-        .doc(this.currentUser.uid)
-        .collection("collections")
-        .doc("sync")
-        .set(cl)
+      if (this.currentProject) {
+        await this.usersCollection
+          .doc(this.currentUser.uid)
+          .collection("projects")
+          .doc(this.currentProject.id)
+          .update({
+            collections: {
+              sync: cl,
+            },
+          })
+      } else {
+        await this.usersCollection
+          .doc(this.currentUser.uid)
+          .collection("collections")
+          .doc("sync")
+          .set(cl)
+      }
     } catch (e) {
       console.error("error updating", cl, e)
 
