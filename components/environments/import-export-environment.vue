@@ -78,6 +78,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -93,7 +94,11 @@ export default {
   },
   computed: {
     environmentJson() {
-      return JSON.stringify(this.$store.state.postwoman.environments, null, 2)
+      return JSON.stringify(
+        projectsService.getCurrentProject(this.$store)?.environments ?? [],
+        null,
+        2
+      )
     },
   },
   methods: {
@@ -111,11 +116,14 @@ export default {
       reader.onload = ({ target }) => {
         let content = target.result
         let environments = JSON.parse(content)
-        this.$store.commit("postwoman/replaceEnvironments", environments)
+        this.$store.commit("postwoman/replaceEnvironments", {
+          environments,
+          project: projectsService.getCurrentProject(this.$store),
+        })
       }
       reader.readAsText(this.$refs.inputChooseFileToReplaceWith.files[0])
       this.fileImported()
-      this.syncToFBEnvironments()
+      projectsService.syncCurrentProject(this.$store)
       this.$refs.inputChooseFileToReplaceWith.value = ""
     },
     importFromJSON() {
@@ -133,7 +141,6 @@ export default {
         }
       }
       reader.readAsText(this.$refs.inputChooseFileToImportFrom.files[0])
-      this.syncToFBEnvironments()
       this.$refs.inputChooseFileToImportFrom.value = ""
     },
     importFromPostwoman(environments) {
@@ -141,7 +148,9 @@ export default {
       this.$store.commit("postwoman/importAddEnvironments", {
         environments,
         confirmation,
+        project: projectsService.getCurrentProject(this.$store),
       })
+      projectsService.syncCurrentProject(this.$store)
     },
     importFromPostman({ name, values }) {
       let environment = { name, variables: [] }
@@ -168,15 +177,7 @@ export default {
       })
     },
     syncEnvironments() {
-      this.$store.commit("postwoman/replaceEnvironments", fb.currentEnvironments)
-      this.fileImported()
-    },
-    syncToFBEnvironments() {
-      if (fb.currentUser !== null) {
-        if (fb.currentSettings[1].value) {
-          fb.writeEnvironments(JSON.parse(JSON.stringify(this.$store.state.postwoman.environments)))
-        }
-      }
+      projectsService.syncCurrentProject(this.$store)
     },
     fileImported() {
       this.$toast.info(this.$t("file_imported"), {

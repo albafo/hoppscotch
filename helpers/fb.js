@@ -14,6 +14,11 @@ const firebaseConfig = {
   measurementId: process.env.MEASUREMENT_ID || "G-ERJ6025CEB",
 }
 
+export const EVENTS = {
+  settingsLoaded: "SETTINGS_LOADED",
+  projectsLoaded: "PROJECTS_LOADED",
+}
+
 export const authProviders = {
   google: () => new firebase.auth.GoogleAuthProvider(),
   github: () => new firebase.auth.GithubAuthProvider(),
@@ -23,8 +28,8 @@ export class FirebaseInstance {
   constructor(fbapp, authProviders) {
     this.app = fbapp
     this.authProviders = authProviders
-
-    this.usersCollection = this.app.firestore().collection("users")
+    this.db = this.app.firestore()
+    this.usersCollection = this.db.collection("users")
 
     this.currentUser = null
     this.currentFeeds = []
@@ -34,10 +39,12 @@ export class FirebaseInstance {
     this.currentEnvironments = []
     this.currentProjects = []
     this.currentProject = null
+    this.handlers = []
 
     this.app.auth().onAuthStateChanged((user) => {
       if (user) {
         this.currentUser = user
+
         this.currentUser.providerData.forEach((profile) => {
           let us = {
             updatedOn: new Date(),
@@ -78,6 +85,7 @@ export class FirebaseInstance {
               settings.push(setting)
             })
             this.currentSettings = settings
+            this.throwEventHandler(EVENTS.settingsLoaded, settings)
           })
 
         this.usersCollection
@@ -126,6 +134,7 @@ export class FirebaseInstance {
         this.usersCollection
           .doc(this.currentUser.uid)
           .collection("projects")
+          .orderBy("updated_at", "desc")
           .onSnapshot((projectsRef) => {
             const projects = []
             projectsRef.forEach((doc) => {
@@ -133,9 +142,8 @@ export class FirebaseInstance {
               project.id = doc.id
               projects.push(project)
             })
-            if (projects.length > 0) {
-              this.currentProjects = projects
-            }
+            this.currentProjects = projects
+            this.throwEventHandler(EVENTS.projectsLoaded, this.currentProjects)
           })
       } else {
         this.currentUser = null
@@ -143,25 +151,13 @@ export class FirebaseInstance {
     })
   }
 
-  async editProject(project) {
-    await this.usersCollection
-      .doc(this.currentUser.uid)
-      .collection("projects")
-      .doc(project.id)
-      .update({
-        name: project.name,
-      })
+  on(event, handler) {
+    this.handlers[event] = handler
   }
-  async deleteProject(project) {
-    try {
-      await this.usersCollection
-        .doc(this.currentUser.uid)
-        .collection("projects")
-        .doc(project.id)
-        .delete()
-    } catch (e) {
-      console.error("error deleting", project, e)
-      throw e
+
+  throwEventHandler(event, args) {
+    if (event in this.handlers) {
+      this.handlers[event](args)
     }
   }
 
@@ -193,6 +189,62 @@ export class FirebaseInstance {
 
     await this.app.auth().signOut()
     this.currentUser = null
+  }
+
+  processAddedEditedAndDeleted(arr, collection) {
+    let self = this
+    collection.get().then(function (querySnapshot) {
+      querySnapshot.forEach(function (doc) {
+        //delete docs
+        if (!arr.some((item) => item.id === doc.id)) {
+          collection.doc(doc.id).delete()
+        }
+      })
+    })
+
+    arr.forEach(function (item, index) {
+      if (item.editing || item.adding) {
+        arr[index] = {
+          ...item,
+          ...self.getMetadata(),
+        }
+      }
+    })
+  }
+
+  async writeProjects(projects) {
+    this.processAddedEditedAndDeleted(
+      projects,
+      this.usersCollection.doc(this.currentUser.uid).collection("projects")
+    )
+    let batch = this.db.batch()
+    projects.forEach((project) => {
+      batch.set(
+        this.usersCollection.doc(this.currentUser.uid).collection("projects").doc(project.id),
+        project
+      )
+    })
+    await batch.commit()
+  }
+
+  async writeProject(project) {
+    project = {
+      ...project,
+      ...this.getMetadata(),
+    }
+    await this.usersCollection
+      .doc(this.currentUser.uid)
+      .collection("projects")
+      .doc(project.id)
+      .set(project)
+  }
+
+  async deleteProyect(project) {
+    await this.usersCollection
+      .doc(this.currentUser.uid)
+      .collection("projects")
+      .doc(project.id)
+      .delete()
   }
 
   async writeFeeds(message, label) {
@@ -335,16 +387,46 @@ export class FirebaseInstance {
     }
 
     try {
-      await this.usersCollection
-        .doc(this.currentUser.uid)
-        .collection("environments")
-        .doc("sync")
-        .set(ev)
+      if (this.currentProject) {
+        await this.usersCollection
+          .doc(this.currentUser.uid)
+          .collection("projects")
+          .doc(this.currentProject.id)
+          .update({
+            environemnts: {
+              sync: ev,
+            },
+          })
+      } else {
+        await this.usersCollection
+          .doc(this.currentUser.uid)
+          .collection("environments")
+          .doc("sync")
+          .set(ev)
+      }
     } catch (e) {
       console.error("error updating", ev, e)
 
       throw e
     }
+  }
+  userIsSync() {
+    return this.currentUser !== null && this.currentSettings[0] && this.currentSettings[0].value
+  }
+
+  getMetadata() {
+    if (this.userIsSync()) {
+      return {
+        author: this.currentUser.uid,
+        author_name: this.currentUser.displayName,
+        author_image: this.currentUser.photoURL,
+        updated_at: new Date().toISOString(),
+        adding: null,
+        editing: null,
+      }
+    }
+
+    return {}
   }
 }
 

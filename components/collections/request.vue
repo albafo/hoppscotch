@@ -54,6 +54,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import deleteIcon from "~/static/icons/delete-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: { deleteIcon },
@@ -71,13 +72,6 @@ export default {
     }
   },
   methods: {
-    syncCollections() {
-      if (fb.currentUser !== null) {
-        if (fb.currentSettings[0].value) {
-          fb.writeCollections(JSON.parse(JSON.stringify(this.$store.state.postwoman.collections)))
-        }
-      }
-    },
     selectRequest() {
       this.$store.commit("postwoman/selectRequest", { request: this.request })
     },
@@ -94,11 +88,12 @@ export default {
         collectionIndex: this.$props.collectionIndex,
         folderName: this.$props.folderName,
         requestIndex: this.$props.requestIndex,
+        project: projectsService.getCurrentProject(this.$store),
       })
       this.$toast.error(this.$t("deleted"), {
         icon: "delete",
       })
-      this.syncCollections()
+      projectsService.syncCurrentProject(this.$store)
     },
   },
 }

@@ -40,6 +40,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -57,22 +58,16 @@ export default {
     }
   },
   methods: {
-    syncCollections() {
-      if (fb.currentUser !== null) {
-        if (fb.currentSettings[0].value) {
-          fb.writeCollections(JSON.parse(JSON.stringify(this.$store.state.postwoman.collections)))
-        }
-      }
-    },
     editFolder() {
       this.$store.commit("postwoman/editFolder", {
         collectionIndex: this.$props.collectionIndex,
         folder: { ...this.$props.folder, name: this.$data.name },
         folderIndex: this.$props.folderIndex,
         folderName: this.$props.folder.name,
+        project: projectsService.getCurrentProject(this.$store),
       })
       this.hideModal()
-      this.syncCollections()
+      projectsService.syncCurrentProject(this.$store)
     },
     hideModal() {
       this.$emit("hide-modal")

@@ -2,8 +2,8 @@
   <div class="page">
     <div class="text-center">
       <span class="cursor-pointer" @click="showModalProjects = true">
-        <span v-if="!fb.currentProject">Workspaces</span
-        ><span v-else>{{ fb.currentProject.name }}</span>
+        <span v-if="!currentProject">{{ $t("projects") }}</span
+        ><span v-else>{{ currentProject.name }}</span>
         <i class="ml-2 align-middle material-icons">expand_more</i>
       </span>
     </div>
@@ -13,9 +13,17 @@
         <ul>
           <li>
             <div class="row-wrapper">
-              <h3 class="title"><span>Workspaces</span></h3>
+              <h3 class="title">
+                <span>{{ $t("projects") }}</span>
+              </h3>
               <div>
-                <button class="icon" @click="showModalProjects = false">
+                <button
+                  class="icon"
+                  @click="
+                    showModalProjects = false
+                    addingProject = false
+                  "
+                >
                   <closeIcon class="material-icons" />
                 </button>
               </div>
@@ -23,30 +31,58 @@
           </li>
         </ul>
       </div>
+
       <div slot="body">
         <div class="show-on-large-screen">
-          <input aria-label="Search" type="search" :placeholder="$t('search')" />
+          <input
+            aria-label="Search"
+            type="search"
+            v-model="searchProjects"
+            :placeholder="$t('search')"
+          />
           <!-- <button class="icon">
             <i class="material-icons">search</i>
           </button> -->
         </div>
+        <div class="row-wrapper">
+          <button @click="addingProject = true" class="icon has-tooltip">
+            <i class="material-icons">note_add</i> <span>New Project</span>
+          </button>
+        </div>
         <div class="virtual-list">
           <ul class="flex-col">
+            <li v-if="addingProject">
+              <div class="row-wrapper">
+                <input
+                  placeholder="New Project Name"
+                  type="text"
+                  spellcheck="false"
+                  v-model="newProject.name"
+                />
+                <i @click="addProject()" class="ml-2 mr-2 align-middle material-icons">done</i>
+                <i
+                  @click="
+                    addingProject = false
+                    newProject.name = ''
+                  "
+                  class="ml-2 align-middle material-icons"
+                  >delete</i
+                >
+              </div>
+            </li>
             <li v-for="(collection, index) in filteredProjects">
               <div class="row-wrapper">
-                <div v-if="editProject !== collection.id">
+                <div v-if="editingProject.id !== collection.id">
                   <button class="icon" @click="setCurrentProject(collection)">
                     <span>
-                      <i class="mr-2 align-middle material-icons">meeting_room</i>
+                      <i class="mr-2 align-middle material-icons">groups</i>
                       {{ collection.name }}
                     </span>
                   </button>
                 </div>
                 <div v-else>
-                  <input type="text" spellcheck="false" v-model="collection.name" />
-                  <i @click="editedProject(collection)" class="ml-2 align-middle material-icons"
-                    >done</i
-                  >
+                  <input type="text" spellcheck="false" v-model="editingProject.name" />
+                  <i @click="editedProject(index)" class="ml-2 align-middle material-icons">done</i>
                 </div>
 
                 <v-popover>
@@ -55,13 +91,13 @@
                   </button>
                   <template slot="popover">
                     <div>
-                      <button class="icon" @click="editProject = collection.id" v-close-popover>
+                      <button class="icon" @click="editProject(collection)" v-close-popover>
                         <i class="material-icons">create</i>
                         <span>{{ $t("edit") }}</span>
                       </button>
                     </div>
                     <div>
-                      <button class="icon" @click="deleteProject(collection)" v-close-popover>
+                      <button class="icon" @click="deleteProject(index)" v-close-popover>
                         <deleteIcon class="material-icons" />
                         <span>{{ $t("delete") }}</span>
                       </button>
@@ -77,7 +113,13 @@
         <div class="row-wrapper">
           <span></span>
           <span>
-            <button class="icon" @click="showModalProjects = false">
+            <button
+              class="icon"
+              @click="
+                showModalProjects = false
+                addingProject = false
+              "
+            >
               {{ $t("cancel") }}
             </button>
           </span>
@@ -1364,6 +1406,7 @@ import { knownContentTypes, isJSONContentType } from "~/helpers/utils/contenttyp
 import closeIcon from "~/static/icons/close-24px.svg?inline"
 import deleteIcon from "~/static/icons/delete-24px.svg?inline"
 import { codegens, generateCodeWithGenerator } from "~/helpers/codegen/codegen"
+import { projectsService } from "@/services/projects"
 
 const statusCategories = [
   {
@@ -1408,7 +1451,15 @@ export default {
   },
   data() {
     return {
-      editProject: null,
+      searchProjects: "",
+      addingProject: false,
+      newProject: {
+        name: "",
+      },
+      editingProject: {
+        id: null,
+        name: "",
+      },
       showModal: false,
       showModalProjects: false,
       showPreRequestScript: true,
@@ -1566,13 +1617,19 @@ export default {
     },
   },
   computed: {
+    currentProject() {
+      return projectsService.getCurrentProject(this.$store)
+    },
     filteredProjects() {
       const projects =
         fb.currentUser !== null ? fb.currentProjects : this.$store.state.postwoman.projects
       let resultProjects = []
+      let search = this.searchProjects.toLowerCase()
       projects.forEach(function (item) {
-        item.edit = false
-        resultProjects.push(item)
+        if (item.name.toLowerCase().includes(search)) {
+          item.edit = false
+          resultProjects.push(item)
+        }
       })
       return resultProjects
     },
@@ -1630,7 +1687,7 @@ export default {
     },
     label: {
       get() {
-        return this.$store.state.request.label
+        return this.$store.state.request.label ?? ""
       },
       set(value) {
         this.$store.commit("setState", { value, attribute: "label" })
@@ -1943,25 +2000,33 @@ export default {
     },
   },
   methods: {
-    editedProject(project) {
-      fb.editProject(project)
-      this.editProject = null
+    addProject() {
+      projectsService.addProject(this.$store, this.newProject)
+      this.newProject.name = ""
+      this.addingProject = false
     },
-    deleteProject(project) {
+    editProject(project) {
+      this.editingProject = JSON.parse(JSON.stringify(project))
+    },
+    editedProject(index) {
+      projectsService.editProject(this.$store, index, this.editingProject)
+      this.editingProject.id = null
+    },
+    deleteProject(index) {
       if (!confirm("¿Seguro que quieres borrar este proyecto?")) return
-      fb.deleteProject(project)
+      projectsService.deleteProject(this.$store, index)
       this.$toast.error(this.$t("deleted"), {
         icon: "delete",
       })
     },
     setCurrentProject(project) {
-      fb.setCurrentProject(project)
-      this.$store.commit("postwoman/replaceCollections", fb.currentCollections)
+      projectsService.setCurrentProject(this.$store, project.id)
       this.showModalProjects = false
     },
 
     useSelectedEnvironment(args) {
       let environment = args.environment
+
       let environments = args.environments
       let preRequestScriptString = ""
       for (let variable of environment.variables) {
@@ -1981,13 +2046,15 @@ export default {
       }
       this.preRequestScript = preRequestScriptString
       this.showPreRequestScript = true
+
+      this.$store.commit("postwoman/selectPreRequestScript", {
+        script: this.preRequestScript,
+      })
+
       return preRequestScriptString
     },
     checkCollections() {
-      const checkCollectionAvailability =
-        this.$store.state.postwoman.collections &&
-        this.$store.state.postwoman.collections.length > 0
-      return checkCollectionAvailability
+      return projectsService.getCurrentProject(this.$store)?.collections?.length > 0
     },
     scrollInto(view) {
       this.$refs[view].$el.scrollIntoView({
@@ -2808,6 +2875,13 @@ export default {
     await this.oauthRedirectReq()
   },
   created() {
+    if (
+      this.$store.state.postwoman.preRequestScript &&
+      this.$store.state.postwoman.preRequestScript !== ""
+    ) {
+      this.preRequestScript = this.$store.state.postwoman.preRequestScript
+    }
+
     this.urlExcludes = this.$store.state.postwoman.settings.URL_EXCLUDES || {
       // Exclude authentication by default for security reasons.
       auth: true,

@@ -45,6 +45,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -61,13 +62,6 @@ export default {
     }
   },
   methods: {
-    syncCollections() {
-      if (fb.currentUser !== null) {
-        if (fb.currentSettings[0].value) {
-          fb.writeCollections(JSON.parse(JSON.stringify(this.$store.state.postwoman.collections)))
-        }
-      }
-    },
     saveCollection() {
       if (!this.$data.name) {
         this.$toast.info(this.$t("invalid_collection_name"))
@@ -78,11 +72,12 @@ export default {
         name: this.$data.name,
       }
       this.$store.commit("postwoman/editCollection", {
+        project: projectsService.getCurrentProject(this.$store),
         collection: collectionUpdated,
         collectionIndex: this.$props.editingCollectionIndex,
       })
       this.$emit("hide-modal")
-      this.syncCollections()
+      projectsService.syncCurrentProject(this.$store)
     },
     hideModal() {
       this.$emit("hide-modal")

@@ -103,6 +103,7 @@
 import { fb } from "~/helpers/fb"
 import folderIcon from "~/static/icons/folder-24px.svg?inline"
 import deleteIcon from "~/static/icons/delete-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: { folderIcon, deleteIcon },
@@ -134,11 +135,12 @@ export default {
       if (!confirm(this.$t("are_you_sure_remove_collection"))) return
       this.$store.commit("postwoman/removeCollection", {
         collectionIndex: this.collectionIndex,
+        project: projectsService.getCurrentProject(this.$store),
       })
       this.$toast.error(this.$t("deleted"), {
         icon: "delete",
       })
-      this.syncCollections()
+      projectsService.syncCurrentProject(this.$store)
     },
     dropEvent({ dataTransfer }) {
       this.dragging = !this.dragging

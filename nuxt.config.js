@@ -1,3 +1,5 @@
+require("dotenv").config()
+
 // Common options
 export const options = {
   name: "Hoppscotch",
@@ -332,15 +334,7 @@ export default {
     fallback: true,
   },
 
-  // Public runtime configuration (https://nuxtjs.org/guide/runtime-config)
-  publicRuntimeConfig: {
-    GA_ID: process.env.GA_ID || "UA-61422507-4",
-    GTM_ID: process.env.GTM_ID || "GTM-NMKVBMV",
-    BASE_URL: process.env.BASE_URL || "https://hoppscotch.io/",
-  },
-
-  // Private runtime configuration (https://nuxtjs.org/guide/runtime-config)
-  privateRuntimeConfig: {
+  env: {
     API_KEY: process.env.API_KEY,
     AUTH_DOMAIN: process.env.AUTH_DOMAIN,
     DATABASE_URL: process.env.DATABASE_URL,
@@ -349,5 +343,8 @@ export default {
     MESSAGING_SENDER_ID: process.env.MESSAGING_SENDER_ID,
     APP_ID: process.env.APP_ID,
     MEASUREMENT_ID: process.env.MEASUREMENT_ID,
+  },
+  router: {
+    middleware: "stats",
   },
 }

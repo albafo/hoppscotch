@@ -282,6 +282,7 @@ export default {
       }
     },
     initSettings() {
+      fb.writeSettings("syncProjects", true)
       fb.writeSettings("syncHistory", true)
       fb.writeSettings("syncCollections", true)
       fb.writeSettings("syncEnvironments", true)

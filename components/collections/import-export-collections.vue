@@ -7,7 +7,7 @@
             <h3 class="title">{{ $t("import_export") }} {{ $t("collections") }}</h3>
             <div>
               <button class="icon" @click="hideModal">
-                <closeIcon class="material-icons" />
+                <closeIcon class="material-ic ons" />
               </button>
             </div>
           </div>
@@ -78,6 +78,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -93,7 +94,7 @@ export default {
   },
   computed: {
     collectionJson() {
-      return JSON.stringify(this.$store.state.postwoman.collections, null, 2)
+      return JSON.stringify(projectsService.getCurrentProject(this.$store)?.collections, null, 2)
     },
   },
   methods: {
@@ -117,13 +118,20 @@ export default {
             // Do nothing
           }
         } else if (collections.info && collections.info.schema.includes("v2.1.0")) {
+          //replace the variables, postman uses {{var}}, Hoppscotch uses <<var>>
           collections = [this.parsePostmanCollection(collections)]
+          collections = JSON.parse(
+            JSON.stringify(collections).replaceAll("{{", "<<").replaceAll("}}", ">>")
+          )
         } else {
           return this.failedImport()
         }
-        this.$store.commit("postwoman/replaceCollections", collections)
+        this.$store.commit("postwoman/replaceCollections", {
+          collections,
+          project: projectsService.getCurrentProject(this.$store),
+        })
         this.fileImported()
-        this.syncToFBCollections()
+        projectsService.syncCurrentProject(this.$store)
       }
       reader.readAsText(this.$refs.inputChooseFileToReplaceWith.files[0])
       this.$refs.inputChooseFileToReplaceWith.value = ""
@@ -140,14 +148,19 @@ export default {
           }
         } else if (collections.info && collections.info.schema.includes("v2.1.0")) {
           //replace the variables, postman uses {{var}}, Hoppscotch uses <<var>>
-          collections = JSON.parse(content.replaceAll(/{{([a-z]+)}}/gi, "<<$1>>"))
           collections = [this.parsePostmanCollection(collections)]
+          collections = JSON.parse(
+            JSON.stringify(collections).replaceAll("{{", "<<").replaceAll("}}", ">>")
+          )
         } else {
           return this.failedImport()
         }
-        this.$store.commit("postwoman/importCollections", collections)
+        this.$store.commit("postwoman/importCollections", {
+          collections,
+          project: projectsService.getCurrentProject(this.$store),
+        })
+        projectsService.syncCurrentProject(this.$store)
         this.fileImported()
-        this.syncToFBCollections()
       }
       reader.readAsText(this.$refs.inputChooseFileToImportFrom.files[0])
       this.$refs.inputChooseFileToImportFrom.value = ""
@@ -171,16 +184,9 @@ export default {
       })
     },
     syncCollections() {
-      this.$store.commit("postwoman/replaceCollections", fb.currentCollections)
-      this.fileImported()
+      projectsService.syncCurrentProject(this.$store)
     },
-    syncToFBCollections() {
-      if (fb.currentUser !== null) {
-        if (fb.currentSettings[0].value) {
-          fb.writeCollections(JSON.parse(JSON.stringify(this.$store.state.postwoman.collections)))
-        }
-      }
-    },
+
     fileImported() {
       this.$toast.info(this.$t("file_imported"), {
         icon: "folder_shared",
@@ -266,10 +272,15 @@ export default {
       }
       let requestObjectHeaders = request.header
       if (requestObjectHeaders) {
+        let headers = []
         pwRequest.headers = requestObjectHeaders
         for (let header of pwRequest.headers) {
           delete header.name
           delete header.type
+          if (!header.disabled) {
+            headers.push(header)
+          }
+          pwRequest.headers = headers
         }
       }
       let requestObjectParams = request.url.query

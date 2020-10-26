@@ -109,6 +109,7 @@
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
 import deleteIcon from "~/static/icons/delete-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -144,13 +145,6 @@ export default {
     },
   },
   methods: {
-    syncEnvironments() {
-      if (fb.currentUser !== null) {
-        if (fb.currentSettings[1].value) {
-          fb.writeEnvironments(JSON.parse(JSON.stringify(this.$store.state.postwoman.environments)))
-        }
-      }
-    },
     clearContent({ target }) {
       this.$store.commit("postwoman/removeVariables", [])
       target.innerHTML = this.doneButton
@@ -162,7 +156,6 @@ export default {
     addEnvironmentVariable() {
       let value = { key: "", value: "" }
       this.$store.commit("postwoman/addVariable", value)
-      this.syncEnvironments()
     },
     removeEnvironmentVariable(index) {
       let variableIndex = index
@@ -182,7 +175,6 @@ export default {
           },
         },
       })
-      this.syncEnvironments()
     },
     saveEnvironment() {
       if (!this.$data.name) {
@@ -196,9 +188,10 @@ export default {
       this.$store.commit("postwoman/saveEnvironment", {
         environment: environmentUpdated,
         environmentIndex: this.$props.editingEnvironmentIndex,
+        project: projectsService.getCurrentProject(this.$store),
       })
       this.$emit("hide-modal")
-      this.syncEnvironments()
+      projectsService.syncCurrentProject(this.$store)
     },
     hideModal() {
       this.$emit("hide-modal")

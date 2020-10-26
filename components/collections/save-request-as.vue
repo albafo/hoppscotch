@@ -31,11 +31,7 @@
               <option :key="undefined" :value="undefined" hidden disabled selected>
                 {{ $t("select_collection") }}
               </option>
-              <option
-                v-for="(collection, index) in $store.state.postwoman.collections"
-                :key="index"
-                :value="index"
-              >
+              <option v-for="(collection, index) in collections" :key="index" :value="index">
                 {{ collection.name }}
               </option>
             </select>
@@ -78,6 +74,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -113,8 +110,11 @@ export default {
     },
   },
   computed: {
+    collections() {
+      return projectsService.getCurrentProject(this.$store)?.collections
+    },
     folders() {
-      const collections = this.$store.state.postwoman.collections
+      const collections = projectsService.getCurrentProject(this.$store)?.collections
       const collectionIndex = this.$data.requestData.collectionIndex
       const userSelectedAnyCollection = collectionIndex !== undefined
       if (!userSelectedAnyCollection) return []
@@ -125,7 +125,7 @@ export default {
       return getFolderNames(collections[collectionIndex].folders, [])
     },
     requests() {
-      const collections = this.$store.state.postwoman.collections
+      const collections = projectsService.getCurrentProject(this.$store)?.collections
       const collectionIndex = this.$data.requestData.collectionIndex
       const folderName = this.$data.requestData.folderName
 
@@ -180,10 +180,11 @@ export default {
         collectionIndex: this.$data.requestData.collectionIndex,
         folderName: this.$data.requestData.folderName,
         requestIndex: this.$data.requestData.requestIndex,
+        project: projectsService.getCurrentProject(this.$store),
       })
 
       this.hideModal()
-      this.syncCollections()
+      projectsService.syncCurrentProject(this.$store)
     },
     hideModal() {
       this.$emit("hide-modal")

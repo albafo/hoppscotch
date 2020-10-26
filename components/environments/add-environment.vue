@@ -45,6 +45,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -80,9 +81,10 @@ export default {
       this.$store.commit("postwoman/importAddEnvironments", {
         environments: newEnvironment,
         confirmation: "Environment added",
+        project: projectsService.getCurrentProject(this.$store),
       })
       this.$emit("hide-modal")
-      this.syncEnvironments()
+      projectsService.syncCurrentProject(this.$store)
     },
     hideModal() {
       this.$emit("hide-modal")

@@ -45,6 +45,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -71,11 +72,18 @@ export default {
         this.$toast.info(this.$t("invalid_collection_name"))
         return
       }
+      if (!this.$store.state.postwoman.settings.currentProject) {
+        this.$toast.info(this.$t("project_not_selected"))
+        return
+      }
       this.$store.commit("postwoman/addNewCollection", {
-        name: this.$data.name,
+        collection: {
+          name: this.$data.name,
+        },
+        project: projectsService.getCurrentProject(this.$store),
       })
       this.$emit("hide-modal")
-      this.syncCollections()
+      projectsService.syncCurrentProject(this.$store)
     },
     hideModal() {
       this.$emit("hide-modal")

@@ -1,4 +1,5 @@
 import Vue from "vue"
+import { v4 as uuidv4 } from "uuid"
 
 export const SETTINGS_KEYS = [
   /**
@@ -63,8 +64,21 @@ export const state = () => ({
   ],
   editingEnvironment: {},
   selectedRequest: {},
+  preRequestScript: "",
   editingRequest: {},
+  projects: [
+    {
+      name: "My Project",
+      collections: [],
+    },
+  ],
 })
+
+export const getters = {
+  collections: (state) => {
+    return state.currentProject !== null ? state.currentProject.collections : state.collections
+  },
+}
 
 export const mutations = {
   applySetting({ settings }, setting) {
@@ -112,9 +126,9 @@ export const mutations = {
     state.environments = environments
   },
 
-  importAddEnvironments(state, { environments, confirmation }) {
+  importAddEnvironments(state, { environments, confirmation, project }) {
     const duplicateEnvironment = environments.some((item) => {
-      return state.environments.some((item2) => {
+      return project.environments.some((item2) => {
         return item.name.toLowerCase() === item2.name.toLowerCase()
       })
     })
@@ -122,10 +136,9 @@ export const mutations = {
       this.$toast.info("Duplicate environment")
       return
     }
-    state.environments = [...state.environments, ...environments]
-
+    project.environments = [...project.environments, ...environments]
     let index = 0
-    for (let environment of state.environments) {
+    for (let environment of project.environments) {
       environment.environmentIndex = index
       index += 1
     }
@@ -134,15 +147,15 @@ export const mutations = {
     })
   },
 
-  removeEnvironment({ environments }, environmentIndex) {
-    environments.splice(environmentIndex, 1)
+  removeEnvironment({ environments }, { index, project }) {
+    project.environments.splice(index, 1)
   },
 
   saveEnvironment({ environments }, payload) {
-    const { environment, environmentIndex } = payload
+    const { environment, environmentIndex, project } = payload
     const { name } = environment
     const duplicateEnvironment =
-      environments.length === 1
+      project.environments.length === 1
         ? false
         : environments.some(
             (item) =>
@@ -153,15 +166,23 @@ export const mutations = {
       this.$toast.info("Duplicate environment")
       return
     }
-    environments[environmentIndex] = environment
+    project.environments[environmentIndex] = environment
   },
 
-  replaceCollections(state, collections) {
-    state.collections = collections
+  replaceProjects(state, projects) {
+    state.projects = projects
   },
 
-  importCollections(state, collections) {
-    state.collections = [...state.collections, ...collections]
+  replaceCollections(state, { collections, project }) {
+    project.collections = collections
+  },
+
+  setCurrentProject(state, project) {
+    state.settings.currentProject = project
+  },
+
+  importCollections(state, { collections, project }) {
+    project.collections = [...project.collections, ...collections]
 
     let index = 0
     for (let collection of collections) {
@@ -170,42 +191,77 @@ export const mutations = {
     }
   },
 
-  addNewCollection({ collections }, collection) {
-    const { name } = collection
-    const duplicateCollection = collections.some(
-      (item) => item.name.toLowerCase() === name.toLowerCase()
-    )
-    if (duplicateCollection) {
-      this.$toast.info("Duplicate collection")
+  addNewProject({ projects }, project) {
+    const { name } = project
+    if (isDuplicatedName(projects, name)) {
+      this.$toast.info("Duplicate project")
       return
     }
-    collections.push({
+    let pr = {
       name: "",
-      folders: [],
-      requests: [],
-      ...collection,
-    })
+      collections: [],
+      environments: [],
+      id: uuidv4(),
+      adding: true,
+      ...times(),
+      ...project,
+    }
+    projects.unshift(pr)
   },
 
-  removeCollection({ collections }, payload) {
-    const { collectionIndex } = payload
-    collections.splice(collectionIndex, 1)
+  removeProject(state, index) {
+    state.projects.splice(index, 1)
   },
 
-  editCollection({ collections }, payload) {
-    const { collection, collectionIndex } = payload
-    const { name } = collection
-    const duplicateCollection = collections.some(
-      (item) => item.name.toLowerCase() === name.toLowerCase()
-    )
-    if (duplicateCollection) {
-      this.$toast.info("Duplicate collection")
+  editProject(state, { index, editProject }) {
+    if (isDuplicatedName(state.projects, editProject.name)) {
+      this.$toast.info("Duplicate project")
       return
     }
-    collections[collectionIndex] = collection
+    state.projects[index] = {
+      ...state.projects[index],
+      name: editProject.name,
+      editing: true,
+      ...times(),
+    }
   },
 
-  addFolder({ collections }, payload) {
+  addNewCollection(state, { project, collection }) {
+    const { name } = collection
+    if (project) {
+      if (isDuplicatedName(project.collections, name)) {
+        this.$toast.info("Duplicate collection")
+        return
+      }
+      let cl = {
+        name: "",
+        folders: [],
+        requests: [],
+        ...collection,
+      }
+
+      project.collections.push(cl)
+    }
+  },
+
+  removeCollection(state, payload) {
+    const { collectionIndex, project } = payload
+    if (project) {
+      project.collections.splice(collectionIndex, 1)
+    }
+  },
+
+  editCollection(state, { project, collection, collectionIndex }) {
+    if (project) {
+      if (isDuplicatedName(project.collections, collection.name)) {
+        this.$toast.info("Duplicate collection")
+        return
+      }
+      project.collections[collectionIndex] = collection
+    }
+  },
+
+  addFolder(state, payload) {
     const { name, folder } = payload
 
     const newFolder = {
@@ -216,9 +272,9 @@ export const mutations = {
     folder.folders.push(newFolder)
   },
 
-  editFolder({ collections }, payload) {
-    const { collectionIndex, folder, folderIndex, folderName } = payload
-    const collection = collections[collectionIndex]
+  editFolder(state, payload) {
+    const { collectionIndex, folder, folderIndex, folderName, project } = payload
+    const collection = project.collections[collectionIndex]
 
     let parentFolder = findFolder(folderName, collection, true)
     if (parentFolder && parentFolder.folders) {
@@ -226,9 +282,9 @@ export const mutations = {
     }
   },
 
-  removeFolder({ collections }, payload) {
-    const { collectionIndex, folderIndex, folderName } = payload
-    const collection = collections[collectionIndex]
+  removeFolder(state, payload) {
+    const { collectionIndex, folderIndex, folderName, project } = payload
+    const collection = project.collections[collectionIndex]
 
     let parentFolder = findFolder(folderName, collection, true)
     if (parentFolder && parentFolder.folders) {
@@ -236,7 +292,9 @@ export const mutations = {
     }
   },
 
-  editRequest({ collections }, payload) {
+  editRequest(state, payload) {
+    const collections = payload.project.collections
+
     const {
       requestCollectionIndex,
       requestFolderName,
@@ -256,7 +314,9 @@ export const mutations = {
     Vue.set(folder.requests, requestIndex, requestNew)
   },
 
-  saveRequestAs({ collections }, payload) {
+  saveRequestAs(state, payload) {
+    const collections = payload.project?.collections
+
     const { request, collectionIndex, folderName, requestIndex } = payload
 
     const specifiedCollection = collectionIndex !== undefined
@@ -281,7 +341,9 @@ export const mutations = {
     }
   },
 
-  removeRequest({ collections }, payload) {
+  removeRequest(state, payload) {
+    const collections = payload.project.collections
+
     const { collectionIndex, folderName, requestIndex } = payload
     let collection = collections[collectionIndex]
 
@@ -300,7 +362,14 @@ export const mutations = {
     state.selectedRequest = Object.assign({}, request)
   },
 
-  moveRequest({ collections }, payload) {
+  selectPreRequestScript(state, { script }) {
+    state.preRequestScript = script
+  },
+
+  moveRequest(state, payload) {
+    const collections =
+      state.currentProject !== null ? state.currentProject.collections : state.collections
+
     const {
       oldCollectionIndex,
       newCollectionIndex,
@@ -328,6 +397,17 @@ export const mutations = {
       }
     }
   },
+}
+
+function isDuplicatedName(object, name) {
+  let duplicated = false
+  object.forEach((item) => {
+    if (item.name.toLowerCase() === name.toLowerCase()) {
+      duplicated = true
+      return
+    }
+  })
+  return duplicated
 }
 
 function testValue(myValue) {
@@ -379,4 +459,17 @@ function findFolder(folderName, currentFolder, returnParent, parentFolder) {
     }
     return false
   }
+}
+function times() {
+  return {
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function removeObjectById(arr, obj) {
+  arr.forEach((ele, index) => {
+    if (ele.id === obj.id) {
+      arr.splice(index, 1)
+    }
+  })
 }

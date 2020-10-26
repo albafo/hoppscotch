@@ -35,6 +35,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import deleteIcon from "~/static/icons/delete-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: { deleteIcon },
@@ -52,11 +53,14 @@ export default {
     },
     removeEnvironment() {
       if (!confirm(this.$t("are_you_sure_remove_environment"))) return
-      this.$store.commit("postwoman/removeEnvironment", this.environmentIndex)
+      this.$store.commit("postwoman/removeEnvironment", {
+        index: this.environmentIndex,
+        project: projectsService.getCurrentProject(this.$store),
+      })
       this.$toast.error(this.$t("deleted"), {
         icon: "delete",
       })
-      this.syncEnvironments()
+      projectsService.syncCurrentProject(this.$store)
     },
   },
 }

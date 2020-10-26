@@ -52,6 +52,7 @@
 
 <script>
 import { fb } from "~/helpers/fb"
+import { projectsService } from "@/services/projects"
 
 export default {
   data() {
@@ -65,9 +66,7 @@ export default {
   },
   computed: {
     environments() {
-      return fb.currentUser !== null
-        ? fb.currentEnvironments
-        : this.$store.state.postwoman.environments
+      return projectsService.getCurrentProject(this.$store)?.environments ?? []
     },
   },
   async mounted() {
@@ -95,7 +94,6 @@ export default {
       this.$data.editingEnvironment = environment
       this.$data.editingEnvironmentIndex = environmentIndex
       this.displayModalEdit(true)
-      this.syncEnvironments()
     },
     resetSelectedData() {
       this.$data.editingEnvironment = undefined

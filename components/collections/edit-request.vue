@@ -43,6 +43,7 @@
 <script>
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
 
 export default {
   components: {
@@ -64,13 +65,6 @@ export default {
     }
   },
   methods: {
-    syncCollections() {
-      if (fb.currentUser !== null) {
-        if (fb.currentSettings[0].value) {
-          fb.writeCollections(JSON.parse(JSON.stringify(this.$store.state.postwoman.collections)))
-        }
-      }
-    },
     saveRequest() {
       const requestUpdated = {
         ...this.$props.request,
@@ -83,10 +77,11 @@ export default {
         requestFolderIndex: this.$props.folderIndex,
         requestNew: requestUpdated,
         requestIndex: this.$props.requestIndex,
+        project: projectsService.getCurrentProject(this.$store),
       })
 
       this.hideModal()
-      this.syncCollections()
+      projectsService.syncCurrentProject()
     },
     hideModal() {
       this.$emit("hide-modal")
