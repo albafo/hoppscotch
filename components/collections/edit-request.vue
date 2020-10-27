@@ -81,7 +81,7 @@ export default {
       })
 
       this.hideModal()
-      projectsService.syncCurrentProject()
+      projectsService.syncCurrentProject(this.$store)
     },
     hideModal() {
       this.$emit("hide-modal")

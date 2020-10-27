@@ -1106,6 +1106,7 @@
         :show="showRequestModal"
         @hide-model="hideRequestModal"
         :editing-request="editRequest"
+        :options="selectedRequestOptions"
       />
 
       <modal v-if="showModal" @close="showModal = false">
@@ -1485,6 +1486,7 @@ export default {
       commonHeaders,
       showRequestModal: false,
       editRequest: {},
+      editRequestOptions: {},
       urlExcludes: {},
       activeSidebar: true,
       fb,
@@ -1892,6 +1894,9 @@ export default {
     },
     selectedRequest() {
       return this.$store.state.postwoman.selectedRequest
+    },
+    selectedRequestOptions() {
+      return this.$store.state.postwoman.selectedRequestOptions
     },
     editingRequest() {
       return this.$store.state.postwoman.editingRequest

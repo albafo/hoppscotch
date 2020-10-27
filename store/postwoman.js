@@ -66,6 +66,7 @@ export const state = () => ({
   ],
   editingEnvironment: {},
   selectedRequest: {},
+  selectedRequestOptions: {},
   preRequestScript: "",
   editingRequest: {},
   projects: [
@@ -360,8 +361,9 @@ export const mutations = {
     }
   },
 
-  selectRequest(state, { request }) {
+  selectRequest(state, { request, ...options }) {
     state.selectedRequest = Object.assign({}, request)
+    state.selectedRequestOptions = options
   },
 
   selectPreRequestScript(state, { script }) {

@@ -73,7 +73,12 @@ export default {
   },
   methods: {
     selectRequest() {
-      this.$store.commit("postwoman/selectRequest", { request: this.request })
+      this.$store.commit("postwoman/selectRequest", {
+        request: this.request,
+        collectionIndex: this.$props.collectionIndex,
+        folderName: this.$props.folderName,
+        requestIndex: this.$props.requestIndex,
+      })
     },
     dragStart({ dataTransfer }) {
       this.dragging = !this.dragging

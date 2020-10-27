@@ -46,8 +46,8 @@
           <label for="selectRequest">{{ $t("request") }}</label>
           <span class="select-wrapper">
             <select type="text" id="selectRequest" v-model="requestData.requestIndex">
-              <option :key="undefined" :value="undefined">/</option>
-              <option v-for="(folder, index) in requests" :key="index" :value="index">
+              <option :key="0" :value="0">/</option>
+              <option v-for="(folder, index) in requests" :key="index + 1" :value="index + 1">
                 {{ folder.name }}
               </option>
             </select>
@@ -83,15 +83,16 @@ export default {
   props: {
     show: Boolean,
     editingRequest: Object,
+    options: Object,
   },
   data() {
     return {
       defaultRequestName: "My Request",
       requestData: {
         name: this.editingRequest.label,
-        collectionIndex: undefined,
-        folderName: undefined,
-        requestIndex: undefined,
+        collectionIndex: this.$props.options?.collectionIndex,
+        folderName: this.$props.options?.folderName,
+        requestIndex: this.$props.options?.requestIndex,
       },
     }
   },
@@ -109,6 +110,12 @@ export default {
       const { label } = newValue
       this.requestData.name = label || "My Request"
       this.defaultRequestName = label || "My Request"
+    },
+    options(newValue) {
+      this.requestData.collectionIndex = newValue.collectionIndex || 0
+      this.requestData.folderName = newValue.folderName || ""
+      this.requestData.requestIndex = newValue.requestIndex + 1 || 0
+      console.log(this.requestData)
     },
   },
   computed: {
@@ -181,7 +188,9 @@ export default {
         request: requestUpdated,
         collectionIndex: this.$data.requestData.collectionIndex,
         folderName: this.$data.requestData.folderName,
-        requestIndex: this.$data.requestData.requestIndex,
+        requestIndex: this.$data.requestData.requestIndex
+          ? this.$data.requestData.requestIndex - 1
+          : undefined,
         project: projectsService.getCurrentProject(this.$store),
       })
 
