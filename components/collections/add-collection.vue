@@ -79,6 +79,7 @@ export default {
       this.$store.commit("postwoman/addNewCollection", {
         collection: {
           name: this.$data.name,
+          label: this.$data.name,
         },
         project: projectsService.getCurrentProject(this.$store),
       })

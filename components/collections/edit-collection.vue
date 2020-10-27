@@ -70,6 +70,7 @@ export default {
       const collectionUpdated = {
         ...this.$props.editingCollection,
         name: this.$data.name,
+        label: this.$data.name,
       }
       this.$store.commit("postwoman/editCollection", {
         project: projectsService.getCurrentProject(this.$store),

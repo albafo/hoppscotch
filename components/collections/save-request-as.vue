@@ -88,7 +88,7 @@ export default {
     return {
       defaultRequestName: "My Request",
       requestData: {
-        name: undefined,
+        name: this.editingRequest.label,
         collectionIndex: undefined,
         folderName: undefined,
         requestIndex: undefined,
@@ -105,7 +105,9 @@ export default {
     "requestData.folderName": function resetRequestIndex() {
       this.$data.requestData.requestIndex = undefined
     },
-    editingRequest({ label }) {
+    editingRequest(newValue) {
+      const { label } = newValue
+      this.requestData.name = label || "My Request"
       this.defaultRequestName = label || "My Request"
     },
   },

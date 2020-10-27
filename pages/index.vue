@@ -1466,6 +1466,7 @@ export default {
       testsEnabled: true,
       testScript: "// pw.expect('variable').toBe('value');",
       preRequestScript: "// pw.env.set('variable', 'value');",
+      preRequestScriptEditor: "// pw.env.set('variable', 'value');",
       testReports: [],
       copyButton: '<i class="material-icons">content_copy</i>',
       downloadButton: '<i class="material-icons">save_alt</i>',
@@ -1601,7 +1602,7 @@ export default {
         this.testsEnabled = true
         this.testScript = newValue.testScript
       }
-      this.label = newValue.label
+      this.label = newValue.name
     },
     editingRequest(newValue) {
       this.editRequest = newValue

@@ -48,7 +48,9 @@ export const SETTINGS_KEYS = [
 ]
 
 export const state = () => ({
-  settings: {},
+  settings: {
+    currentProject: null,
+  },
   collections: [
     {
       name: "My Collection",
