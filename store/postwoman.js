@@ -68,6 +68,7 @@ export const state = () => ({
   selectedRequest: {},
   selectedRequestOptions: {},
   preRequestScript: "",
+  selectedEnvironment: {},
   editingRequest: {},
   projects: [
     {
@@ -366,8 +367,9 @@ export const mutations = {
     state.selectedRequestOptions = options
   },
 
-  selectPreRequestScript(state, { script }) {
+  selectPreRequestScript(state, { script, environment }) {
     state.preRequestScript = script
+    state.selectedEnvironment = environment
   },
 
   moveRequest(state, payload) {

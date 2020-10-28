@@ -115,7 +115,6 @@ export default {
       this.requestData.collectionIndex = newValue.collectionIndex || 0
       this.requestData.folderName = newValue.folderName || ""
       this.requestData.requestIndex = newValue.requestIndex + 1 || 0
-      console.log(this.requestData)
     },
   },
   computed: {

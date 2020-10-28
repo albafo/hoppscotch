@@ -2,7 +2,7 @@
   <div class="wrapper">
     <div class="content">
       <div class="columns">
-        <sidenav />
+        <!--<sidenav />-->
         <main>
           <pw-header />
           <nuxt />

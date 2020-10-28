@@ -1,12 +1,135 @@
 <template>
   <header class="header">
+    <modal v-if="showModalProjects" @close="showModalProjects = false">
+      <div slot="header">
+        <ul>
+          <li>
+            <div class="row-wrapper">
+              <h3 class="title">
+                <span>{{ $t("projects") }}</span>
+              </h3>
+              <div>
+                <button
+                  class="icon"
+                  @click="
+                    showModalProjects = false
+                    addingProject = false
+                  "
+                >
+                  <closeIcon class="material-icons" />
+                </button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <div slot="body">
+        <div class="show-on-large-screen">
+          <input
+            aria-label="Search"
+            type="search"
+            v-model="searchProjects"
+            :placeholder="$t('search')"
+          />
+          <!-- <button class="icon">
+            <i class="material-icons">search</i>
+          </button> -->
+        </div>
+        <div class="row-wrapper">
+          <button @click="addingProject = true" class="icon has-tooltip">
+            <i class="material-icons">note_add</i> <span>New Project</span>
+          </button>
+        </div>
+        <div class="virtual-list">
+          <ul class="flex-col">
+            <li v-if="addingProject">
+              <div class="row-wrapper">
+                <input
+                  placeholder="New Project Name"
+                  type="text"
+                  spellcheck="false"
+                  v-model="newProject.name"
+                />
+                <i @click="addProject()" class="ml-2 mr-2 align-middle material-icons">done</i>
+                <i
+                  @click="
+                    addingProject = false
+                    newProject.name = ''
+                  "
+                  class="ml-2 align-middle material-icons"
+                  >delete</i
+                >
+              </div>
+            </li>
+            <li v-for="(collection, index) in filteredProjects">
+              <div class="row-wrapper">
+                <div v-if="editingProject.id !== collection.id">
+                  <button class="icon" @click="setCurrentProject(collection)">
+                    <span>
+                      <i class="mr-2 align-middle material-icons">groups</i>
+                      {{ collection.name }}
+                    </span>
+                  </button>
+                </div>
+                <div v-else>
+                  <input type="text" spellcheck="false" v-model="editingProject.name" />
+                  <i @click="editedProject(index)" class="ml-2 align-middle material-icons">done</i>
+                </div>
+
+                <v-popover>
+                  <button class="tooltip-target icon">
+                    <i class="material-icons">more_vert</i>
+                  </button>
+                  <template slot="popover">
+                    <div>
+                      <button class="icon" @click="editProject(collection)" v-close-popover>
+                        <i class="material-icons">create</i>
+                        <span>{{ $t("edit") }}</span>
+                      </button>
+                    </div>
+                    <div>
+                      <button class="icon" @click="deleteProject(index)" v-close-popover>
+                        <deleteIcon class="material-icons" />
+                        <span>{{ $t("delete") }}</span>
+                      </button>
+                    </div>
+                  </template>
+                </v-popover>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div slot="footer">
+        <div class="row-wrapper">
+          <span></span>
+          <span>
+            <button
+              class="icon"
+              @click="
+                showModalProjects = false
+                addingProject = false
+              "
+            >
+              {{ $t("cancel") }}
+            </button>
+          </span>
+        </div>
+      </div>
+    </modal>
     <div class="row-wrapper">
-      <span class="slide-in">
-        <nuxt-link :to="localePath('index')">
-          <h1 class="text-xl hide-on-small-screen hover:text-acColor">Hoppscotch</h1>
-          <h1 class="text-xl show-on-small-screen hover:text-acColor">Hs</h1>
-        </nuxt-link>
-      </span>
+      <span class="slide-in"></span>
+      <div>
+        <div class="text-center">
+          <span class="cursor-pointer" @click="showModalProjects = true">
+            <span v-if="!currentProject">{{ $t("projects") }}</span
+            ><span v-else>{{ currentProject.name }}</span>
+            <i class="ml-2 align-middle material-icons">expand_more</i>
+          </span>
+        </div>
+      </div>
+
       <span>
         <button
           class="icon"
@@ -315,10 +438,30 @@ import {
 import { getPlatformSpecialKey } from "~/helpers/platformutils"
 import { fb } from "~/helpers/fb"
 import closeIcon from "~/static/icons/close-24px.svg?inline"
+import { projectsService } from "@/services/projects"
+import deleteIcon from "~/static/icons/delete-24px.svg?inline"
 
 export default {
   components: {
     closeIcon,
+    deleteIcon,
+  },
+  computed: {
+    currentProject() {
+      return projectsService.getCurrentProject(this.$store)
+    },
+    filteredProjects() {
+      const projects = this.$store.state.postwoman.projects
+      let resultProjects = []
+      let search = this.searchProjects.toLowerCase()
+      projects.forEach(function (item) {
+        if (item.name.toLowerCase().includes(search)) {
+          item.edit = false
+          resultProjects.push(item)
+        }
+      })
+      return resultProjects
+    },
   },
   data() {
     return {
@@ -333,6 +476,20 @@ export default {
       showSupport: false,
       fb,
       navigatorShare: navigator.share,
+      showModalProjects: false,
+      searchProjects: "",
+      addingProject: false,
+      editingProject: {
+        id: null,
+        name: "",
+      },
+      editProject(project) {
+        this.editingProject = JSON.parse(JSON.stringify(project))
+      },
+      editedProject(index) {
+        projectsService.editProject(this.$store, index, this.editingProject)
+        this.editingProject.id = null
+      },
     }
   },
 
@@ -435,6 +592,10 @@ export default {
   },
 
   methods: {
+    setCurrentProject(project) {
+      projectsService.setCurrentProject(this.$store, project.id)
+      this.showModalProjects = false
+    },
     getSpecialKey: getPlatformSpecialKey,
     nativeShare() {
       if (navigator.share) {
